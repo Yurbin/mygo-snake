@@ -10,9 +10,9 @@
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
-# ubuntu:20.04 已 EOL,源须指向 old-releases 才能装包(仅 CI 自举,不影响交付物;
-# 麒麟 V10 SP1 自身仍在维护期,内网源可用)。
-sed -i 's|//archive.ubuntu.com|//old-releases.ubuntu.com|g; s|//security.ubuntu.com|//old-releases.ubuntu.com|g' /etc/apt/sources.list
+# focal(20.04)目前仍由 archive.ubuntu.com 正常提供(实测 2026-10);
+# 若未来迁往 old-releases,取消下面两行注释即可。
+# sed -i 's|//archive.ubuntu.com|//old-releases.ubuntu.com|g; s|//security.ubuntu.com|//old-releases.ubuntu.com|g' /etc/apt/sources.list
 apt-get update -qq
 apt-get install -y -qq --no-install-recommends libgtk-3-0 libglib2.0-0 xvfb dbus-x11 file >/dev/null
 
