@@ -39,6 +39,7 @@ jobs:
   kylin-smoke:
     name: 麒麟基座冒烟(ubuntu:20.04 容器 + Xvfb)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
 
@@ -50,35 +51,4 @@ jobs:
         run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o mygo-snake .
 
       - name: 容器内冒烟
-        run: |
-          docker run --rm -v "$PWD":/src ubuntu:20.04 bash -euxc '
-            apt-get update -qq
-            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
-              libgtk-3-0 libglib2.0-0 xvfb file >/dev/null
-
-            xvfb-run -a bash -euxc "
-              # 1) 依赖自检脚本应全部通过(与麒麟 V10 SP1 同版 GTK 3.24)
-              /src/scripts/check-deps.sh
-
-              # 2) 应用应存活满 8 秒直到被 timeout 终止(exit 124)
-              set +e
-              timeout 8 /src/mygo-snake > /tmp/out.log 2>&1
-              code=\$?
-              set -e
-              cat /tmp/out.log
-              if grep -qi \"panic\\|fatal error\" /tmp/out.log; then
-                echo \"[错误] 运行日志含 panic/fatal\"; exit 1
-              fi
-              [ \$code -eq 124 ] || { echo \"[错误] 应用未存活满 8 秒,exit=\$code\"; exit 1; }
-
-              # 3) 用户级开始菜单集成应已写入(零 root)
-              test -f \$HOME/.local/share/applications/mygo-snake.desktop
-              grep -q \"StartupWMClass=mygo-snake\" \$HOME/.local/share/applications/mygo-snake.desktop
-              test -f \$HOME/.local/share/icons/hicolor/1024x1024/apps/mygo-snake.png
-
-              # 4) --uninstall 应清除上述文件
-              /src/mygo-snake --uninstall
-              test ! -e \$HOME/.local/share/applications/mygo-snake.desktop
-              echo \"[OK] 麒麟同基座(ubuntu:20.04)冒烟全部通过\"
-            "
-          '
+        run: docker run --rm -v "$PWD":/src:ro ubuntu:20.04 bash /src/scripts/ci/smoke-kylin.sh
