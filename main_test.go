@@ -4,6 +4,7 @@ package main
 
 import (
 	"testing"
+	"time"
 
 	"github.com/egoist/mygo/ui"
 )
@@ -94,5 +95,25 @@ func TestViewBestPersistsInView(t *testing.T) {
 	tt.Frame()
 	if !tt.HasText("最高 7") {
 		t.Fatalf("HUD 应显示最高 7,文本 %q", tt.Texts())
+	}
+}
+
+func TestTickAdvancesOverTime(t *testing.T) {
+	// 时间驱动循环:开始后等待超过 baseInterval,蛇头应前移。
+	a, tt := newTestApp()
+	tt.Key(0, ui.KeyRight)
+	h0 := a.game.snake[0]
+	time.Sleep(450 * time.Millisecond)
+	tt.Frame()
+	if a.game.snake[0] == h0 {
+		t.Fatalf("450ms 后蛇头未移动,仍在 %v", a.game.snake[0])
+	}
+	// 暂停后时间不应再推进
+	tt.Key(0, ui.KeySpace)
+	h1 := a.game.snake[0]
+	time.Sleep(450 * time.Millisecond)
+	tt.Frame()
+	if a.game.snake[0] != h1 {
+		t.Fatalf("暂停期间蛇头从 %v 移动到了 %v", h1, a.game.snake[0])
 	}
 }
