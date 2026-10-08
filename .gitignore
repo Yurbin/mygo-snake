@@ -1,0 +1,5 @@
+/build/
+/.mygo/
+/dist/
+/mygo-snake
+mygo_windows_*.syso

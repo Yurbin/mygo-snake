@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test(无窗口逻辑与视图测试)
+        run: go test ./...
+
+      - name: 交叉构建 linux/amd64 冒烟(纯 Go 无 cgo)
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -o /tmp/mygo-snake .
+          scripts/check-elf.sh /tmp/mygo-snake
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mygo-snake-linux-amd64-smoke
+          path: /tmp/mygo-snake
+          retention-days: 7

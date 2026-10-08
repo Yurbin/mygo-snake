@@ -1,0 +1,6 @@
+{
+  "name": "mygo-snake",
+  "identifier": "dev.yurbin.mygo-snake",
+  "version": "0.1.0",
+  "out": "build"
+}

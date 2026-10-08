@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: 校验 tag 与 mygo.json 版本一致
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          JSON_VERSION="$(jq -r .version mygo.json)"
+          if [ "$TAG_VERSION" != "$JSON_VERSION" ]; then
+            echo "错误: tag v${TAG_VERSION} 与 mygo.json 版本 ${JSON_VERSION} 不一致"
+            exit 1
+          fi
+          echo "发布版本: ${TAG_VERSION}"
+
+      - name: Test
+        run: go test ./...
+
+      - name: 构建 linux/amd64 生产二进制
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p build/linux-amd64
+          # 与 mygo build 相同的元数据注入(见 cmd/mygo/build.go packageFlags),
+          # 另注入 main.version 供界面显示;绿色包不需要 mygo 的 deb/install.sh 产物。
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath \
+            -ldflags "-s -w \
+              -X github.com/egoist/mygo.packageName=mygo-snake \
+              -X github.com/egoist/mygo.packageVersion=${VERSION} \
+              -X github.com/egoist/mygo.packageIdentifier=dev.yurbin.mygo-snake \
+              -X main.version=${VERSION}" \
+            -o build/linux-amd64/mygo-snake .
+
+      - name: 产物自检(麒麟 glibc 2.31 兼容)
+        run: scripts/check-elf.sh build/linux-amd64/mygo-snake
+
+      - name: 组装绿色免安装包
+        run: scripts/package-portable.sh build/linux-amd64/mygo-snake resources/icon.png "${GITHUB_REF_NAME#v}" dist
+
+      - name: 核对包内结构
+        run: tar tzvf dist/mygo-snake_*_linux_amd64_portable.tar.gz
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/*.sha256
